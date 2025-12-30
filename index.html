@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SENSORY OVERLOAD // 4D</title>
+    <title>PSYCHO-VISUAL ENGINE</title>
     <style>
         body {
             background-color: #000;
@@ -13,272 +13,240 @@
             justify-content: center;
             align-items: center;
             overflow: hidden;
-            font-family: 'Courier New', Courier, monospace;
-            cursor: none; /* Mouse'u gizle */
+            cursor: none;
         }
 
-        #portal-container {
-            width: 95vmin; /* Ekranı neredeyse tam kapla */
+        #screen {
+            width: 95vmin;
             height: 95vmin;
             position: relative;
-            box-shadow: 0 0 100px rgba(255, 0, 0, 0.2);
-            border: 2px solid #111;
-            overflow: hidden;
             background: #000;
+            border: 1px solid #222;
+            box-shadow: 0 0 80px rgba(0, 255, 0, 0.1);
         }
 
         canvas {
             display: block;
             width: 100%;
             height: 100%;
-            /* Kromatik bozulma (renk kayması) efekti */
-            filter: contrast(2.0) saturate(0); 
-            animation: breathe 5s infinite;
+            /* Hafif bulanıklık ve yüksek kontrast halüsinasyon etkisi yaratır */
+            filter: contrast(1.8) brightness(1.1) blur(0.5px);
         }
 
-        @keyframes breathe {
-            0% { filter: contrast(2.0) saturate(0) blur(0px); }
-            50% { filter: contrast(5.0) saturate(100) blur(1px); }
-            100% { filter: contrast(2.0) saturate(0) blur(0px); }
-        }
-
-        /* CRT Tarama Çizgileri */
-        .scanlines {
+        /* Eski VHS Bozulma Efekti */
+        .overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
             background: repeating-linear-gradient(
                 0deg,
-                rgba(0, 0, 0, 0.5),
-                rgba(0, 0, 0, 0.5) 1px,
-                transparent 1px,
-                transparent 2px
+                rgba(0,0,0,0.2),
+                rgba(0,0,0,0.2) 2px,
+                transparent 2px,
+                transparent 4px
             );
             pointer-events: none;
-            z-index: 10;
-        }
-
-        /* Vignette (Köşe karartma) */
-        .vignette {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle, transparent 50%, black 100%);
-            z-index: 11;
+            z-index: 5;
+            mix-blend-mode: overlay;
         }
     </style>
 </head>
 <body>
 
-    <div id="portal-container">
-        <div class="scanlines"></div>
-        <div class="vignette"></div>
-        <canvas id="chaosCanvas"></canvas>
+    <div id="screen">
+        <div class="overlay"></div>
+        <canvas id="canvas"></canvas>
     </div>
 
     <script>
-        const canvas = document.getElementById('chaosCanvas');
-        const ctx = canvas.getContext('2d', { alpha: false }); // Performans için alpha kapalı
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
 
-        let size = 1000; // Dahili çözünürlük
+        // Çözünürlük ayarı
+        const size = 1024;
         canvas.width = size;
         canvas.height = size;
+        const cx = size / 2;
+        const cy = size / 2;
 
-        // 4D Nokta Sınıfı
-        class P4 { constructor(x, y, z, w) { this.x = x; this.y = y; this.z = z; this.w = w; } }
+        let frame = 0;
+        let seed = 1; // Rastgelelik tohumu
 
-        // Tesseract Noktaları
-        let points = [];
-        for (let i = 0; i < 16; i++) {
-            points.push(new P4((i&1)?1:-1, (i&2)?1:-1, (i&4)?1:-1, (i&8)?1:-1));
-        }
+        // Yardımcı Fonksiyonlar
+        const rand = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+        const randRange = (min, max) => rand() * (max - min) + min;
+        
+        // --- GÖRSEL MODÜLLER ---
 
-        let angle = 0;
-        let frameCount = 0;
-
-        // Rastgelelik Fonksiyonları
-        const rand = (min, max) => Math.random() * (max - min) + min;
-        const randInt = (max) => Math.floor(Math.random() * max);
-        const randomColor = () => `rgb(${randInt(255)}, ${randInt(255)}, ${randInt(255)})`;
-        const harshColor = () => Math.random() > 0.5 ? '#FFFFFF' : '#000000'; // Sadece Siyah/Beyaz
-
-        // --- GÖRSEL MOD FONKSİYONLARI ---
-
-        // 1. MOD: 4D Hiperküp (Hızlı ve Bozuk)
-        function drawTesseract() {
-            let scale = size / (rand(2, 6)); 
-            let rotationSpeed = rand(-0.2, 0.2);
+        // 1. STRANGE ATTRACTOR (Kaos Matematiği)
+        // Bu şekiller organik ve canlı gibi görünür
+        function drawAttractor() {
+            ctx.strokeStyle = `hsla(${frame % 360}, 70%, 50%, 0.5)`;
+            ctx.lineWidth = 1;
             
-            ctx.lineWidth = rand(1, 5);
-            ctx.strokeStyle = harshColor();
+            let x = randRange(-1, 1);
+            let y = randRange(-1, 1);
+            // Clifford Attractor parametreleri
+            let a = randRange(-2, 2), b = randRange(-2, 2), c = randRange(-2, 2), d = randRange(-2, 2);
 
-            // Matris manipülasyonu
-            let projectedPoints = points.map(p => {
-                // Anlık değişen 4D rotasyon
-                let w = p.w, z = p.z, x = p.x, y = p.y;
-                
-                // ZW Rotasyonu
-                let ang = angle + frameCount * rotationSpeed;
-                let rw = w * Math.cos(ang) - z * Math.sin(ang);
-                let rz = w * Math.sin(ang) + z * Math.cos(ang);
-                
-                // XW Rotasyonu (bazen)
-                if(Math.random() > 0.5) {
-                    let rx = x * Math.cos(ang) - w * Math.sin(ang);
-                    rw = x * Math.sin(ang) + w * Math.cos(ang);
-                    x = rx;
-                }
-
-                // Projeksiyon
-                let dist = 2.5;
-                let wInv = 1 / (dist - rw);
-                let p3 = { x: x * wInv, y: y * wInv, z: rz * wInv };
-                
-                let zInv = 1 / (dist - p3.z);
-                return { 
-                    x: p3.x * zInv * scale + size/2 + rand(-5, 5), // Jitter
-                    y: p3.y * zInv * scale + size/2 + rand(-5, 5) 
-                };
-            });
-
-            // Rastgele bağlantılar (Tüm küpü çizmek yerine kaotik çizgiler)
-            for(let i=0; i<32; i++) {
-                let a = randInt(16);
-                let b = randInt(16);
-                ctx.beginPath();
-                ctx.moveTo(projectedPoints[a].x, projectedPoints[a].y);
-                ctx.lineTo(projectedPoints[b].x, projectedPoints[b].y);
-                ctx.stroke();
-            }
-        }
-
-        // 2. MOD: Hipnotik Spiraller (Moire Efekti)
-        function drawSpiral() {
-            let cx = size / 2;
-            let cy = size / 2;
-            let count = randInt(50) + 10;
-            let spacing = rand(2, 20);
-            
-            ctx.strokeStyle = harshColor();
-            ctx.lineWidth = rand(1, 3);
-            
             ctx.beginPath();
-            for (let i = 0; i < count * 10; i++) {
-                let r = spacing * i * 0.1;
-                let a = i * 0.5 + angle * 5;
-                let x = cx + Math.cos(a) * r;
-                let y = cy + Math.sin(a) * r;
-                if (i === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
+            for (let i = 0; i < 500; i++) {
+                // Matematiksel kaos formülü
+                let xn = Math.sin(a * y) + c * Math.cos(a * x);
+                let yn = Math.sin(b * x) + d * Math.cos(b * y);
+                x = xn; y = yn;
+                
+                let px = cx + x * (size/4);
+                let py = cy + y * (size/4);
+                
+                if (i === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
             }
             ctx.stroke();
         }
 
-        // 3. MOD: Fraktal / Üçgen Kaosu
-        function drawFractal() {
-            ctx.strokeStyle = '#fff';
-            let recurse = (x, y, s, d) => {
-                if (d <= 0) return;
-                ctx.strokeRect(x - s/2, y - s/2, s, s);
-                if (Math.random() > 0.2) recurse(x - s/2, y - s/2, s/2, d-1);
-                if (Math.random() > 0.2) recurse(x + s/2, y + s/2, s/2, d-1);
-                if (Math.random() > 0.2) recurse(x + s/2, y - s/2, s/2, d-1); // Bazen atla
-            };
-            recurse(size/2, size/2, size/1.5, randInt(5) + 2);
-        }
+        // 2. THE VOID TUNNEL (Sonsuz Tünel)
+        function drawTunnel() {
+            let count = 20;
+            ctx.lineWidth = 2;
+            for(let i = 0; i < count; i++) {
+                let depth = (frame * 5 + i * 50) % 1000;
+                let scale = 1000 / (1000 - depth); // Z ekseni simülasyonu
+                
+                if(scale > 10) continue; // Çok büyükleri çizme
 
-        // 4. MOD: Subliminal Veri (Yazılar ve Kodlar)
-        function drawData() {
-            ctx.fillStyle = '#0f0'; // Matrix yeşili veya beyaz
-            if(Math.random() > 0.5) ctx.fillStyle = '#fff';
-            
-            ctx.font = `${randInt(50)+10}px monospace`;
-            let texts = ["WAKE UP", "NULL", "0xFF", "ERROR", "VOID", "WATCHING", "404", "EYE"];
-            let text = texts[randInt(texts.length)];
-            
-            for(let i=0; i<10; i++) {
-                ctx.fillText(text, rand(0, size), rand(0, size));
-            }
-            
-            // Rastgele Binary
-            ctx.font = '12px monospace';
-            for(let i=0; i<50; i++) {
-                ctx.fillText(Math.random() > 0.5 ? "1" : "0", rand(0, size), rand(0, size));
+                ctx.strokeStyle = (i % 2 === 0) ? '#fff' : '#000';
+                if (rand() > 0.8) ctx.strokeStyle = 'red'; // Anlık kırmızı flaş
+
+                let r = 50 * scale;
+                
+                ctx.beginPath();
+                if(rand() > 0.5) {
+                    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                } else {
+                    ctx.rect(cx - r, cy - r, r*2, r*2);
+                }
+                ctx.stroke();
             }
         }
 
-        // 5. MOD: Görsel Gürültü (Static Noise)
-        function drawNoise() {
-            let imgData = ctx.getImageData(0, 0, size, size);
-            let data = imgData.data;
-            // Sadece belirli şeritleri boz
-            for (let i = 0; i < data.length; i += 4 * randInt(10)) {
-                if(Math.random() > 0.9) {
-                    let val = randInt(255);
-                    data[i] = val;     // R
-                    data[i+1] = val;   // G
-                    data[i+2] = val;   // B
+        // 3. RORSCHACH NOISE (Simetrik Gürültü)
+        // Ekranın bir tarafına çizip diğer tarafına kopyalarak "yüz" veya "böcek" algısı yaratır
+        function drawRorschach() {
+            let tiles = 20;
+            let step = size / tiles;
+            
+            ctx.fillStyle = (frame % 10 < 5) ? '#fff' : '#000'; // Strobe effect
+            
+            for(let x = 0; x < tiles/2; x++) {
+                for(let y = 0; y < tiles; y++) {
+                    if(rand() > 0.5) {
+                        let w = step * randRange(0.5, 3);
+                        let h = step * randRange(0.5, 3);
+                        let px = x * step;
+                        let py = y * step;
+                        
+                        // Sol tarafı çiz
+                        ctx.fillRect(px, py, w, h);
+                        // Sağ tarafı simetrik çiz (Ayna efekti)
+                        ctx.fillRect(size - px - w, py, w, h);
+                    }
                 }
             }
-            ctx.putImageData(imgData, 0, 0);
         }
 
-        // --- ANA DÖNGÜ (CHAOS ENGINE) ---
+        // 4. HYPER-GRID (Bükülen Izgaralar)
+        function drawGrid() {
+            ctx.strokeStyle = '#0f0'; // Matrix yeşili
+            ctx.lineWidth = 1;
+            
+            let distort = Math.sin(frame * 0.05) * 100;
+
+            for(let i=0; i<size; i+=40) {
+                ctx.beginPath();
+                ctx.moveTo(i + distort, 0);
+                ctx.lineTo(i - distort, size);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(0, i + distort);
+                ctx.lineTo(size, i - distort);
+                ctx.stroke();
+            }
+        }
+
+        // 5. SUBLIMINAL GLYPHS (Uzaylı Alfabesi)
+        function drawGlyphs() {
+            ctx.fillStyle = '#fff';
+            ctx.font = '80px monospace';
+            let chars = "▖▗▘▙▚▛▜▝▞▟■□▲▼◆◉◎";
+            
+            let char = chars[Math.floor(randRange(0, chars.length))];
+            
+            // Ekranın rastgele bir yerine büyük bir sembol bas
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(randRange(0, Math.PI));
+            ctx.fillText(char, 0, 0);
+            ctx.restore();
+        }
+
+        // --- ANA MOTOR ---
+
         function loop() {
             requestAnimationFrame(loop);
-
-            // Her karede 3-4 farklı görseli üst üste bindirerek yoğunluk oluşturuyoruz.
-            // Bu, saniyede 60 kare * 4 işlem = 240 görsel olayı yaratır.
-            // Hissiyat 1000 FPS gibidir.
             
-            let layers = randInt(4) + 1; // Kaç katman çizilecek?
+            // Motion Blur (Hareket izi bırakır)
+            // Eğer alfa değerini (0.1) düşürürsen izler daha uzun kalır
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; 
+            ctx.fillRect(0, 0, size, size);
 
-            // Arkaplan temizliği (Bazen tamamen temizle, bazen iz bırak)
-            if (Math.random() < 0.1) {
-                ctx.fillStyle = 'black'; 
-                ctx.fillRect(0,0,size,size);
-            } else {
-                ctx.fillStyle = 'rgba(0,0,0,0.3)'; // Motion blur
-                ctx.fillRect(0,0,size,size);
-            }
+            // Rastgele Sayı Üreteci: Her döngüde farklı bir "kader" seçer
+            // seed'i frame ile değiştiriyoruz ki her karede yeni bir kaos olsun
+            seed = frame * 12345;
 
-            // Ekran titretme (Shake)
+            // --- KAOS YÖNETİCİSİ ---
+            // Saniyede 60 kare var. Her karede birden fazla işlem yaparak
+            // beynin algı hızını aşıyoruz.
+            
+            let mode = Math.floor(randRange(0, 100));
+
             ctx.save();
-            if(Math.random() < 0.3) {
-                ctx.translate(rand(-10, 10), rand(-10, 10));
+            
+            // %10 İhtimalle ekranı titret
+            if(rand() < 0.1) {
+                let shake = 20;
+                ctx.translate(randRange(-shake, shake), randRange(-shake, shake));
             }
 
-            // KATMANLARI ÇİZ
-            for(let k=0; k<layers; k++) {
-                let mode = randInt(100); // 0-100 arası zar at
-
-                if (mode < 30) drawTesseract();       // %30 ihtimalle 4D
-                else if (mode < 50) drawSpiral();     // %20 ihtimalle Spiral
-                else if (mode < 65) drawFractal();    // %15 ihtimalle Fraktal
-                else if (mode < 80) drawData();       // %15 ihtimalle Yazı
-                else if (mode < 95) {                 // %15 ihtimalle Şekiller
-                    // Basit hızlı daireler/kareler
-                    ctx.beginPath();
-                    ctx.strokeStyle = harshColor();
-                    if(Math.random()>0.5) ctx.arc(rand(0,size), rand(0,size), rand(10, 200), 0, Math.PI*2);
-                    else ctx.strokeRect(rand(0,size), rand(0,size), rand(10, 200), rand(10, 200));
-                    ctx.stroke();
-                }
-                else drawNoise(); // %5 ihtimalle Gürültü
-            }
-
-            // Bazen renkleri tamamen tersine çevir (Negatif Efekt)
-            if (Math.random() < 0.05) {
+            // %5 İhtimalle renkleri ters çevir (Gözü yorar ve bozar)
+            if(rand() < 0.05) {
                 ctx.globalCompositeOperation = 'difference';
                 ctx.fillStyle = 'white';
-                ctx.fillRect(0, 0, size, size);
-                ctx.globalCompositeOperation = 'source-over';
+                ctx.fillRect(0,0,size,size);
+            }
+
+            // MOD SEÇİCİ
+            if (mode < 20) {
+                drawAttractor(); // %20 Matematiksel Kaos
+            } else if (mode < 40) {
+                drawTunnel(); // %20 Tünel
+            } else if (mode < 60) {
+                drawRorschach(); // %20 Simetrik Şekiller (Uzaylı yüzleri gibi görünür)
+            } else if (mode < 80) {
+                drawGrid(); // %20 Bükülen Izgara
+            } else {
+                drawGlyphs(); // %20 Semboller
+                // Bazen 4D Küpü de eski usul çizelim
+                ctx.strokeStyle = 'cyan';
+                ctx.strokeRect(cx - 100 + Math.sin(frame*0.1)*50, cy - 100, 200, 200);
             }
 
             ctx.restore();
 
-            angle += 0.05;
-            frameCount++;
+            frame++;
         }
 
+        // Başlat
         loop();
 
     </script>
