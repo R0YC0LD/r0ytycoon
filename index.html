@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Factory Tycoon: Sonsuz Döngü</title>
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --panel-color: #16213e;
+            --accent-color: #0f3460;
+            --text-color: #e94560;
+            --btn-hover: #e94560;
+            --white: #ecf0f1;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--white);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sol Panel: Oyun Alanı (Canvas) */
+        #game-container {
+            flex: 3;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-image: radial-gradient(#2a2a40 10%, transparent 10%);
+            background-size: 30px 30px;
+            box-shadow: inset 0 0 50px #000;
+        }
+
+        canvas {
+            border: 4px solid var(--accent-color);
+            border-radius: 8px;
+            background-color: #222;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        /* Sağ Panel: UI ve Market */
+        #ui-panel {
+            flex: 1;
+            background-color: var(--panel-color);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            border-left: 2px solid var(--accent-color);
+            overflow-y: auto;
+            min-width: 350px;
+        }
+
+        h1 {
+            font-size: 24px;
+            text-align: center;
+            color: var(--text-color);
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-bottom: 2px solid var(--accent-color);
+            padding-bottom: 10px;
+        }
+
+        .stats-container {
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 18px;
+        }
+
+        .money-display {
+            color: #2ecc71;
+            font-weight: bold;
+            font-size: 22px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            color: #aaa;
+            margin-top: 15px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #444;
+        }
+
+        /* Buton Stilleri */
+        .upgrade-btn {
+            background-color: var(--accent-color);
+            color: var(--white);
+            border: none;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            font-size: 14px;
+        }
+
+        .upgrade-btn:hover {
+            background-color: var(--btn-hover);
+            transform: translateX(5px);
+        }
+
+        .upgrade-btn:disabled {
+            background-color: #333;
+            color: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .upgrade-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .upgrade-cost {
+            font-weight: bold;
+            color: #f1c40f;
+        }
+
+        .rebirth-btn {
+            background: linear-gradient(45deg, #8e44ad, #c0392b);
+            margin-top: auto;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 20px;
+            border: 2px solid #fff;
+        }
+
+        /* Bildirimler */
+        #notification-area {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            pointer-events: none;
+        }
+
+        .notification {
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            margin-bottom: 5px;
+            animation: fadeOut 3s forwards;
+            border-left: 4px solid var(--text-color);
+        }
+
+        @keyframes fadeOut {
+            0% { opacity: 1; transform: translateY(0); }
+            90% { opacity: 1; }
+            100% { opacity: 0; transform: translateY(-20px); }
+        }
+
+        /* Floating Text Stili */
+        .floating-text {
+            position: absolute;
+            font-weight: bold;
+            pointer-events: none;
+            animation: floatUp 1s forwards;
+        }
+
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-30px) scale(1.5); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="notification-area"></div>
+    </div>
+
+    <div id="ui-panel">
+        <h1>Factory Tycoon</h1>
+        
+        <div class="stats-container">
+            <div class="stat-row">
+                <span>Nakit:</span>
+                <span id="money-display" class="money-display">$0</span>
+            </div>
+            <div class="stat-row">
+                <span>Rebirth (Çarpan):</span>
+                <span id="rebirth-display" style="color: #9b59b6;">0 (x1.0)</span>
+            </div>
+            <div class="stat-row">
+                <span>Gelir/Sn:</span>
+                <span id="income-display" style="color: #3498db;">$0.0</span>
+            </div>
+        </div>
+
+        <div class="section-title">Dropper Market (Üreticiler)</div>
+        <div id="dropper-shop">
+            </div>
+
+        <div class="section-title">Fabrika Yükseltmeleri</div>
+        <div id="upgrade-shop">
+            <button class="upgrade-btn" onclick="game.upgradeSpeed()">
+                <div class="upgrade-info">
+                    <span>Bant Hızı</span>
+                    <small>Daha hızlı para akışı</small>
+                </div>
+                <span class="upgrade-cost" id="speed-cost">$100</span>
+            </button>
+            <button class="upgrade-btn" onclick="game.upgradeValue()">
+                <div class="upgrade-info">
+                    <span>Değer Yükseltme</span>
+                    <small>Birim başına +$5</small>
+                </div>
+                <span class="upgrade-cost" id="value-cost">$500</span>
+            </button>
+        </div>
+
+        <button class="upgrade-btn rebirth-btn" onclick="game.doRebirth()">
+            <div class="upgrade-info">
+                <span>REBIRTH (Yeniden Doğuş)</span>
+                <small>Her şeyi sıfırla, Kalıcı x1.5 Gelir Kazan</small>
+            </div>
+            <span class="upgrade-cost" id="rebirth-cost">$100,000</span>
+        </button>
+
+        <div style="margin-top: 20px; font-size: 12px; text-align: center; color: #666;">
+            Otomatik Kayıt Aktif • Created by Gemini
+        </div>
+    </div>
+
+<script>
+/**
+ * OYUN MOTORU VE MANTIK KATMANI
+ * -----------------------------
+ * Bu script canvas çizimi, oyun döngüsü, ekonomi yönetimi
+ * ve kullanıcı etkileşimlerini içerir.
+ */
+
+// Yardımcı Fonksiyonlar
+const formatMoney = (amount) => {
+    if (amount >= 1e12) return '$' + (amount / 1e12).toFixed(2) + 'T';
+    if (amount >= 1e9) return '$' + (amount / 1e9).toFixed(2) + 'B';
+    if (amount >= 1e6) return '$' + (amount / 1e6).toFixed(2) + 'M';
+    if (amount >= 1e3) return '$' + (amount / 1e3).toFixed(2) + 'K';
+    return '$' + Math.floor(amount).toLocaleString();
+};
+
+class Game {
+    constructor() {
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        
+        // Oyun Durumu (State)
+        this.state = {
+            money: 100, // Başlangıç parası
+            rebirths: 0,
+            beltSpeed: 2,
+            baseValue: 1,
+            purchasedDroppers: [], // Satın alınan dropperların listesi
+            particles: [], // Hareket eden para kutuları
+            floatTexts: [] // Ekranda uçuşan yazılar
+        };
+
+        // Konfigürasyonlar
+        this.costs = {
+            speed: 100,
+            value: 500,
+            rebirth: 100000
+        };
+
+        // Dropper Tipleri (Veritabanı gibi düşün)
+        this.dropperTypes = [
+            { id: 0, name: "Paslı Dropper", cost: 0, value: 5, color: '#95a5a6', rate: 120 }, // rate: frame cinsinden gecikme
+            { id: 1, name: "Demir Dropper", cost: 250, value: 15, color: '#7f8c8d', rate: 100 },
+            { id: 2, name: "Altın Dropper", cost: 1500, value: 40, color: '#f1c40f', rate: 90 },
+            { id: 3, name: "Elmas Dropper", cost: 8000, value: 120, color: '#3498db', rate: 80 },
+            { id: 4, name: "Zümrüt Dropper", cost: 25000, value: 350, color: '#2ecc71', rate: 70 },
+            { id: 5, name: "Obsidyen Dropper", cost: 100000, value: 1000, color: '#8e44ad', rate: 60 },
+            { id: 6, name: "Kuantum Dropper", cost: 1000000, value: 5000, color: '#e74c3c', rate: 40 }
+        ];
+
+        // Konveyör Bant Tasarımı (Basit bir 'U' şekli)
+        // x, y, w, h, direction (dx, dy)
+        this.belts = [
+            { x: 100, y: 100, w: 600, h: 60, dx: 1, dy: 0 }, // Üst bant (sağa)
+            { x: 700, y: 100, w: 60, h: 400, dx: 0, dy: 1 }, // Sağ bant (aşağı)
+            { x: 100, y: 440, w: 660, h: 60, dx: -1, dy: 0 }, // Alt bant (sola) - Toplayıcı burada
+        ];
+
+        // Dropper Yerleşim Noktaları (Slotlar)
+        this.slots = [];
+        for(let i=0; i<8; i++) {
+            this.slots.push({ x: 120 + (i * 70), y: 40, taken: false, beltIndex: 0 }); // Üst sıra
+        }
+        for(let i=0; i<5; i++) {
+             this.slots.push({ x: 770, y: 120 + (i * 70), taken: false, beltIndex: 1, rotate: true }); // Sağ sıra
+        }
+
+        // Başlatma
+        this.loadGame();
+        this.initUI();
+        this.loop = this.loop.bind(this);
+        requestAnimationFrame(this.loop);
+
+        // Otomatik Kayıt
+        setInterval(() => this.saveGame(), 10000);
+    }
+
+    // --- OYUN DÖNGÜSÜ ---
+    loop() {
+        this.update();
+        this.draw();
+        requestAnimationFrame(this.loop);
+    }
+
+    update() {
+        // 1. Dropper Mantığı (Spawn Particles)
+        this.state.purchasedDroppers.forEach(d => {
+            d.timer++;
+            if(d.timer >= d.rate) {
+                d.timer = 0;
+                this.spawnParticle(d);
+            }
+        });
+
+        // 2. Parçacık Hareketi
+        for (let i = this.state.particles.length - 1; i >= 0; i--) {
+            let p = this.state.particles[i];
+            
+            // Bant üzerindeki hareket
+            let belt = this.belts[p.beltIndex];
+            
+            p.x += belt.dx * this.state.beltSpeed;
+            p.y += belt.dy * this.state.beltSpeed;
+
+            // Bant sonuna geldi mi kontrolü
+            let nextBelt = false;
+            
+            // Sağa giden bant sonu
+            if (belt.dx === 1 && p.x > belt.x + belt.w - 20) {
+                if (this.belts[p.beltIndex + 1]) {
+                    p.beltIndex++; // Sonraki banda geç
+                    // Pozisyon düzeltme
+                    p.x = this.belts[p.beltIndex].x + 10;
+                    p.y = this.belts[p.beltIndex].y + 10;
+                }
+            }
+            // Aşağı giden bant sonu
+            else if (belt.dy === 1 && p.y > belt.y + belt.h - 20) {
+                if (this.belts[p.beltIndex + 1]) {
+                    p.beltIndex++;
+                     // Pozisyon düzeltme
+                    p.x = this.belts[p.beltIndex].x + belt.w - 30; // Sağdan hizala
+                    p.y = this.belts[p.beltIndex].y + 10;
+                }
+            }
+            // Sola giden bant (Collector)
+            else if (belt.dx === -1 && p.x < belt.x) {
+                // COLLECT!
+                this.collectMoney(p.value, p.x, p.y);
+                this.state.particles.splice(i, 1);
+            }
+        }
+
+        // 3. Floating Texts Hareketi (UI Animasyon)
+        for (let i = this.state.floatTexts.length - 1; i >= 0; i--) {
+            this.state.floatTexts[i].life--;
+            this.state.floatTexts[i].y -= 1;
+            if(this.state.floatTexts[i].life <= 0) {
+                this.state.floatTexts.splice(i, 1);
+            }
+        }
+
+        this.updateUI();
+    }
+
+    draw() {
+        // Temizle
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Bantları Çiz
+        this.ctx.fillStyle = '#333';
+        this.belts.forEach(b => {
+            this.ctx.fillStyle = '#2c3e50';
+            this.ctx.fillRect(b.x, b.y, b.w, b.h);
+            
+            // Bant detayları (Hareket hissi için çizgiler)
+            this.ctx.fillStyle = '#34495e';
+            if(b.dx !== 0) {
+                for(let i=0; i<b.w; i+=40) {
+                    let offset = (Date.now() / 10 * this.state.beltSpeed) % 40;
+                    if(b.dx > 0) this.ctx.fillRect(b.x + i + offset, b.y, 5, b.h);
+                    else this.ctx.fillRect(b.x + b.w - i - offset, b.y, 5, b.h);
+                }
+            } else {
+                for(let i=0; i<b.h; i+=40) {
+                    let offset = (Date.now() / 10 * this.state.beltSpeed) % 40;
+                    this.ctx.fillRect(b.x, b.y + i + offset, b.w, 5);
+                }
+            }
+        });
+
+        // Toplayıcı (Collector) Çizimi - Son bantın başı
+        let lastBelt = this.belts[this.belts.length-1];
+        this.ctx.fillStyle = '#27ae60'; // Yeşil
+        this.ctx.fillRect(lastBelt.x - 20, lastBelt.y - 10, 30, lastBelt.h + 20);
+        
+        // Fırın/İşlemci efekti (Collector üzerinde)
+        this.ctx.fillStyle = `rgba(46, 204, 113, ${0.5 + Math.sin(Date.now()/200)*0.2})`;
+        this.ctx.beginPath();
+        this.ctx.arc(lastBelt.x, lastBelt.y + lastBelt.h/2, 30, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Slotları ve Dropperları Çiz
+        this.slots.forEach(slot => {
+            // Slot zemini
+            this.ctx.fillStyle = 'rgba(255,255,255,0.1)';
+            this.ctx.fillRect(slot.x, slot.y, 50, 50);
+            this.ctx.strokeStyle = '#555';
+            this.ctx.strokeRect(slot.x, slot.y, 50, 50);
+        });
+
+        this.state.purchasedDroppers.forEach(d => {
+            // Dropper Gövdesi
+            this.ctx.fillStyle = d.color;
+            this.ctx.fillRect(d.x, d.y, 50, 50);
+            
+            // Dropper Detayı (3D hissi için)
+            this.ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            this.ctx.fillRect(d.x+5, d.y+5, 40, 40);
+
+            // Ağız kısmı
+            this.ctx.fillStyle = '#000';
+            this.ctx.fillRect(d.x+15, d.y+15, 20, 20);
+        });
+
+        // Parçacıkları (Kutuları) Çiz
+        this.state.particles.forEach(p => {
+            this.ctx.fillStyle = p.color;
+            this.ctx.shadowBlur = 10;
+            this.ctx.shadowColor = p.color;
+            this.ctx.fillRect(p.x, p.y, 20, 20);
+            this.ctx.shadowBlur = 0;
+            
+            // Dolar işareti
+            this.ctx.fillStyle = '#fff';
+            this.ctx.font = '12px Arial';
+            this.ctx.fillText('$', p.x+6, p.y+14);
+        });
+
+        // Floating Text Çizimi
+        this.state.floatTexts.forEach(t => {
+            this.ctx.fillStyle = `rgba(46, 204, 113, ${t.life / 60})`;
+            this.ctx.font = 'bold 16px Arial';
+            this.ctx.fillText(t.text, t.x, t.y);
+        });
+    }
+
+    // --- OYUN MANTIKLARI ---
+
+    spawnParticle(dropper) {
+        let belt = this.belts[dropper.beltIndex];
+        let p = {
+            x: dropper.x + 15,
+            y: dropper.y + 15,
+            value: (dropper.value + this.state.baseValue) * (1 + (this.state.rebirths * 0.5)), // Rebirth multiplier
+            color: dropper.color,
+            beltIndex: dropper.beltIndex
+        };
+
+        // Eğer dropper dikey bant yanındaysa pozisyonu ayarla
+        if(dropper.rotate) {
+            p.x = belt.x + 20; 
+            p.y = dropper.y + 15;
+        } else {
+             p.y = belt.y + 20;
+        }
+
+        this.state.particles.push(p);
+    }
+
+    collectMoney(amount, x, y) {
+        this.state.money += amount;
+        
+        // Efekt ekle
+        this.state.floatTexts.push({
+            x: x,
+            y: y,
+            text: "+" + formatMoney(amount),
+            life: 60
+        });
+    }
+
+    buyDropper(typeId) {
+        let type = this.dropperTypes.find(t => t.id === typeId);
+        
+        if (this.state.money >= type.cost) {
+            // Boş slot bul
+            let emptySlot = this.slots.find(s => !s.taken);
+            if (emptySlot) {
+                this.state.money -= type.cost;
+                emptySlot.taken = true;
+
+                // Yeni dropper objesi oluştur
+                this.state.purchasedDroppers.push({
+                    ...type, // Özellikleri kopyala
+                    x: emptySlot.x,
+                    y: emptySlot.y,
+                    timer: 0,
+                    beltIndex: emptySlot.beltIndex,
+                    rotate: emptySlot.rotate || false
+                });
+
+                this.showNotification(`${type.name} satın alındı!`);
+                this.saveGame();
+            } else {
+                this.showNotification("Boş yer kalmadı! Rebirth yapmalısın.", "error");
+            }
+        } else {
+            this.showNotification("Yetersiz Bakiye!", "error");
+        }
+    }
+
+    upgradeSpeed() {
+        if(this.state.money >= this.costs.speed) {
+            this.state.money -= this.costs.speed;
+            this.state.beltSpeed += 0.5;
+            this.costs.speed = Math.floor(this.costs.speed * 1.5);
+            this.showNotification("Bant hızı arttırıldı!");
+        }
+    }
+
+    upgradeValue() {
+        if(this.state.money >= this.costs.value) {
+            this.state.money -= this.costs.value;
+            this.state.baseValue += 5;
+            this.costs.value = Math.floor(this.costs.value * 1.6);
+            this.showNotification("Üretim değeri arttırıldı!");
+        }
+    }
+
+    doRebirth() {
+        if(this.state.money >= this.costs.rebirth) {
+            if(confirm("Tüm fabrikayı sıfırlayıp kalıcı gelir artışı almak istiyor musun?")) {
+                this.state.rebirths++;
+                // Resetle ama kalıcıları tut
+                this.state.money = 100;
+                this.state.beltSpeed = 2;
+                this.state.baseValue = 1;
+                this.state.purchasedDroppers = [];
+                this.state.particles = [];
+                
+                // Maliyetleri resetle
+                this.costs.speed = 100;
+                this.costs.value = 500;
+                this.costs.rebirth *= 3; // Rebirth zorlaşır
+
+                // Slotları boşalt
+                this.slots.forEach(s => s.taken = false);
+
+                // İlk dropper'ı ver (Hediye)
+                this.buyDropper(0);
+
+                this.showNotification(`REBIRTH #${this.state.rebirths} BAŞARILI!`);
+                this.saveGame();
+            }
+        }
+    }
+
+    // --- UI YÖNETİMİ ---
+
+    initUI() {
+        const shopDiv = document.getElementById('dropper-shop');
+        this.dropperTypes.forEach(type => {
+            let btn = document.createElement('button');
+            btn.className = 'upgrade-btn';
+            btn.innerHTML = `
+                <div class="upgrade-info">
+                    <span style="color:${type.color}">${type.name}</span>
+                    <small>Değer: $${type.value}</small>
+                </div>
+                <span class="upgrade-cost" id="btn-cost-${type.id}">${type.cost === 0 ? 'BEDAVA' : '$' + type.cost.toLocaleString()}</span>
+            `;
+            btn.onclick = () => this
