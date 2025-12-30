@@ -2,742 +2,265 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NEON FACTORY TYCOON: PRO EDITION</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4D Anomaly Simulation</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap');
-
-        :root {
-            --primary: #00f3ff;
-            --secondary: #bc13fe;
-            --bg: #050510;
-            --panel: rgba(20, 20, 35, 0.85);
-            --danger: #ff0055;
-            --success: #00ff9d;
-        }
-
-        * { box-sizing: border-box; user-select: none; -webkit-user-drag: none; }
-
         body {
-            margin: 0; padding: 0;
-            background: var(--bg);
-            color: white;
-            font-family: 'Rajdhani', sans-serif;
-            overflow: hidden;
+            background-color: #000;
+            margin: 0;
             height: 100vh;
-            width: 100vw;
-        }
-
-        /* --- UI KATMANLARI --- */
-        #ui-layer {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; /* Canvas'a tıklamayı engellemesin */
-            display: flex; flex-direction: column; justify-content: space-between;
-        }
-
-        .interactive { pointer-events: all; }
-
-        /* --- GİRİŞ EKRANI --- */
-        #start-screen {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle at center, #1a1a2e 0%, #000 100%);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 999;
-            transition: opacity 0.5s;
-        }
-
-        h1.logo {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 80px;
-            background: linear-gradient(to right, var(--primary), var(--secondary));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 30px rgba(0, 243, 255, 0.5);
-            margin: 0 0 50px 0;
-            text-align: center;
-        }
-
-        .btn-main {
-            background: transparent;
-            border: 2px solid var(--primary);
-            color: var(--primary);
-            padding: 15px 50px;
-            font-size: 24px;
-            font-family: 'Orbitron', sans-serif;
-            cursor: pointer;
-            margin: 10px;
-            transition: 0.3s;
-            position: relative;
-            overflow: hidden;
-            text-transform: uppercase;
-            width: 300px;
-        }
-
-        .btn-main:hover {
-            background: var(--primary);
-            color: #000;
-            box-shadow: 0 0 20px var(--primary);
-        }
-
-        /* --- OYUN HUD --- */
-        #hud {
-            padding: 20px;
             display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            opacity: 0; /* Başlangıçta gizli */
-            transition: opacity 1s;
-        }
-
-        .stat-panel {
-            background: var(--panel);
-            backdrop-filter: blur(10px);
-            padding: 15px 30px;
-            border-left: 4px solid var(--success);
-            border-radius: 0 10px 10px 0;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-        }
-
-        .money-text {
-            font-size: 32px;
-            color: var(--success);
-            font-family: 'Orbitron', sans-serif;
-            font-weight: bold;
-        }
-
-        .income-text {
-            font-size: 14px;
-            color: #aaa;
-        }
-
-        /* --- MARKET PANELİ --- */
-        #build-menu {
-            position: absolute; bottom: 20px; left: 50%;
-            transform: translateX(-50%);
-            background: var(--panel);
-            padding: 10px;
-            border-radius: 15px;
-            border: 1px solid #333;
-            display: flex;
-            gap: 10px;
-            backdrop-filter: blur(10px);
-            opacity: 0;
-            transition: transform 0.3s, opacity 0.5s;
-        }
-
-        .shop-item {
-            width: 80px; height: 80px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid #444;
-            border-radius: 8px;
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
             justify-content: center;
-            transition: 0.2s;
+            align-items: center;
+            overflow: hidden;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        /* 1:1 Kutu Ayarı - Ekranın %90'ını kaplar ama kare kalır */
+        #portal-container {
+            width: 90vmin;
+            height: 90vmin;
             position: relative;
+            box-shadow: 0 0 50px rgba(255, 255, 255, 0.1);
+            border: 1px solid #333;
+            overflow: hidden;
         }
-
-        .shop-item:hover { background: rgba(255,255,255,0.1); transform: translateY(-5px); border-color: var(--primary); }
-        .shop-item.locked { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
-        
-        .shop-icon { font-size: 24px; margin-bottom: 5px; }
-        .shop-cost { color: var(--success); font-weight: bold; font-size: 12px; }
-        .shop-name { font-size: 10px; text-transform: uppercase; color: #fff; text-align: center;}
-
-        /* --- NOTIFICATIONS --- */
-        #notifs {
-            position: absolute; top: 100px; right: 20px;
-            display: flex; flex-direction: column; gap: 10px;
-        }
-        .toast {
-            background: rgba(0,0,0,0.8);
-            color: white; padding: 10px 20px;
-            border-right: 3px solid var(--primary);
-            animation: slideIn 0.3s ease-out;
-        }
-
-        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
 
         canvas {
             display: block;
-            width: 100%; height: 100%;
-            background-image: 
-                linear-gradient(rgba(10,10,20,0.95), rgba(10,10,20,0.95)),
-                repeating-linear-gradient(0deg, transparent, transparent 49px, #222 50px),
-                repeating-linear-gradient(90deg, transparent, transparent 49px, #222 50px);
-            background-size: 100% 100%, 50px 50px, 50px 50px;
+            width: 100%;
+            height: 100%;
+            filter: contrast(1.5) brightness(1.2);
+        }
+
+        /* Eski TV / CRT Efekti için katman */
+        .scanlines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                to bottom,
+                rgba(255,255,255,0),
+                rgba(255,255,255,0) 50%,
+                rgba(0,0,0,0.4) 50%,
+                rgba(0,0,0,0.4)
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* Subliminal gürültü efekti */
+        .noise {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.08;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 11;
         }
     </style>
 </head>
 <body>
 
-    <canvas id="gameCanvas"></canvas>
-
-    <div id="ui-layer">
-        
-        <div id="start-screen" class="interactive">
-            <h1 class="logo">NEON<br>TYCOON</h1>
-            <button class="btn-main" onclick="Game.startNew()">YENİ OYUN</button>
-            <button class="btn-main" onclick="Game.loadGame()">DEVAM ET</button>
-            <p style="color:#666; margin-top:20px;">v2.0 Professional Build</p>
-        </div>
-
-        <div id="hud">
-            <div class="stat-panel">
-                <div class="money-text" id="ui-money">$0</div>
-                <div class="income-text" id="ui-income">+$0/sn</div>
-            </div>
-            <div class="stat-panel" style="border-left-color: var(--secondary);">
-                <div style="font-weight:bold; color:var(--secondary)">REBIRTH</div>
-                <div id="ui-rebirth" style="font-size:20px;">0</div>
-            </div>
-        </div>
-
-        <div id="notifs"></div>
-
-        <div id="build-menu" class="interactive">
-            </div>
+    <div id="portal-container">
+        <div class="scanlines"></div>
+        <div class="noise"></div>
+        <canvas id="dimensionCanvas"></canvas>
     </div>
 
-<script>
-/**
- * ------------------------------------------------------------------
- * NEON FACTORY TYCOON - PROFESSIONAL ENGINE
- * Architecture: Entity-Component System (Simplified)
- * ------------------------------------------------------------------
- */
+    <script>
+        const canvas = document.getElementById('dimensionCanvas');
+        const ctx = canvas.getContext('2d');
 
-// --- YARDIMCI FONKSİYONLAR ---
-const $ = (id) => document.getElementById(id);
-const formatMoney = (n) => {
-    if (n >= 1e12) return '$' + (n / 1e12).toFixed(2) + 'T';
-    if (n >= 1e9) return '$' + (n / 1e9).toFixed(2) + 'B';
-    if (n >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
-    if (n >= 1e3) return '$' + (n / 1e3).toFixed(2) + 'K';
-    return '$' + Math.floor(n).toLocaleString();
-};
+        // Canvas çözünürlüğünü ayarla
+        let size = 800;
+        canvas.width = size;
+        canvas.height = size;
 
-// --- KONFİGÜRASYON ---
-const CONFIG = {
-    gridSize: 60,
-    tickRate: 60, // FPS
-    startMoney: 150,
-    colors: {
-        belt: '#2a2a40',
-        processor: '#27ae60',
-        grid: '#222'
-    }
-};
-
-// --- VERİTABANI (ITEMS) ---
-const ITEMS = {
-    droppers: [
-        { id: 'd1', name: 'Demir Üretici', cost: 100, value: 5, color: '#bdc3c7', speed: 120 },
-        { id: 'd2', name: 'Altın Üretici', cost: 500, value: 15, color: '#f1c40f', speed: 100 },
-        { id: 'd3', name: 'Plazma Üretici', cost: 2500, value: 45, color: '#9b59b6', speed: 80 },
-        { id: 'd4', name: 'Kuantum Üretici', cost: 12000, value: 150, color: '#00f3ff', speed: 60 },
-    ],
-    upgrades: [
-        { id: 'u1', name: 'Hızlandırma', cost: 1000, desc: 'Bant hızı %20 artar', type: 'global_speed' }
-    ]
-};
-
-// --- SINIFLAR ---
-
-class Vector2 {
-    constructor(x, y) { this.x = x; this.y = y; }
-}
-
-class Particle {
-    constructor(x, y, value, color) {
-        this.pos = new Vector2(x, y);
-        this.target = new Vector2(x, y); // Hedef grid pozisyonu
-        this.value = value;
-        this.color = color;
-        this.active = true;
-        this.speed = 2; // Pixel per frame
-        this.progress = 0; // 0 to 1 between tiles
-    }
-
-    update(gridMap) {
-        // Basit hareket mantığı: Hedefe doğru lerp
-        let dx = this.target.x - this.pos.x;
-        let dy = this.target.y - this.pos.y;
-        let dist = Math.sqrt(dx*dx + dy*dy);
-
-        if (dist > this.speed) {
-            this.pos.x += (dx / dist) * this.speed;
-            this.pos.y += (dy / dist) * this.speed;
-        } else {
-            // Hedefe ulaştı, yeni hedef belirle
-            this.pos.x = this.target.x;
-            this.pos.y = this.target.y;
-            this.findNextTarget(gridMap);
-        }
-    }
-
-    findNextTarget(gridMap) {
-        // Grid koordinatlarını bul
-        let gx = Math.round(this.pos.x / CONFIG.gridSize);
-        let gy = Math.round(this.pos.y / CONFIG.gridSize);
-
-        // Hangi tile üzerindeyiz?
-        let tile = gridMap[`${gx},${gy}`];
-        
-        if (tile && tile.type === 'belt') {
-            // Bant yönüne göre yeni hedef
-            this.target.x = (gx + tile.dx) * CONFIG.gridSize;
-            this.target.y = (gy + tile.dy) * CONFIG.gridSize;
-        } else if (tile && tile.type === 'processor') {
-            // İşlemciye geldi
-            Game.collectMoney(this.value, this.pos.x, this.pos.y);
-            this.active = false;
-        } else {
-            // Yol bitti, yok ol
-            this.active = false;
-        }
-    }
-
-    draw(ctx) {
-        ctx.fillStyle = this.color;
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = this.color;
-        
-        let size = 16;
-        ctx.fillRect(this.pos.x - size/2, this.pos.y - size/2, size, size);
-        
-        // Parlama efekti
-        ctx.fillStyle = 'rgba(255,255,255,0.5)';
-        ctx.fillRect(this.pos.x - size/4, this.pos.y - size/4, size/2, size/2);
-        
-        ctx.shadowBlur = 0;
-    }
-}
-
-class Tile {
-    constructor(gx, gy, type, meta = {}) {
-        this.gx = gx;
-        this.gy = gy;
-        this.x = gx * CONFIG.gridSize;
-        this.y = gy * CONFIG.gridSize;
-        this.type = type; // 'belt', 'dropper', 'processor', 'empty'
-        this.meta = meta; // {dx, dy, value, rate...}
-        this.timer = 0;
-    }
-
-    update() {
-        if (this.type === 'dropper') {
-            this.timer++;
-            if (this.timer >= this.meta.rate) {
-                this.timer = 0;
-                // Parçacık üret ve yanındaki banda koy
-                Game.spawnParticle(this.gx + this.meta.outDx, this.gy + this.meta.outDy, this.meta.value, this.meta.color);
+        // 4D Nokta Sınıfı
+        class P4 {
+            constructor(x, y, z, w) {
+                this.x = x; this.y = y; this.z = z; this.w = w;
             }
         }
-    }
 
-    draw(ctx) {
-        const cx = this.x; // Center drawing not needed for rects usually but logic holds
-        const s = CONFIG.gridSize;
+        // Tesseract (Hiperküp) Köşeleri (16 adet)
+        let points = [];
+        for (let i = 0; i < 16; i++) {
+            let x = (i & 1) ? 1 : -1;
+            let y = (i & 2) ? 1 : -1;
+            let z = (i & 4) ? 1 : -1;
+            let w = (i & 8) ? 1 : -1;
+            points.push(new P4(x, y, z, w));
+        }
 
-        if (this.type === 'belt') {
-            ctx.fillStyle = CONFIG.colors.belt;
-            ctx.fillRect(this.x, this.y, s, s);
+        // Açılar
+        let angle = 0;
+        
+        // Rastgelelik ve Kaos değişkenleri
+        let chaosMode = false;
+        let glitchIntensity = 0;
+        let speed = 0.02;
+        let colorHue = 0;
+
+        // Projeksiyon Matris Fonksiyonları
+        function matMul(m, p) {
+            // Basit matris çarpımı (4D rotasyonlar için özelleştirilmiş)
+            // Bu örnekte doğrudan rotasyon formülleri kullanacağız
+        }
+
+        function draw() {
+            // Ekranı temizle ama hafif iz bırak (motion blur etkisi)
+            ctx.fillStyle = chaosMode ? 'rgba(20, 0, 0, 0.3)' : 'rgba(0, 0, 0, 0.2)';
+            ctx.fillRect(0, 0, size, size);
+
+            // Rastgele tetiklenen kaos modu
+            if (Math.random() < 0.01) chaosMode = !chaosMode;
+            if (Math.random() < 0.05) speed = (Math.random() * 0.1) - 0.02; // Hız aniden değişir
             
-            // Ok çizimi
-            ctx.strokeStyle = '#445';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(this.x + s/2, this.y + s/2);
-            ctx.lineTo(this.x + s/2 + this.meta.dx * 15, this.y + s/2 + this.meta.dy * 15);
-            ctx.stroke();
-
-            // Animasyonlu çizgiler
-            let offset = (Date.now() / 20) % s;
-            ctx.fillStyle = 'rgba(255,255,255,0.1)';
-            if (this.meta.dx !== 0) {
-                 // Yatay bant animasyonu
-                 let drawX = this.x + (this.meta.dx > 0 ? offset : s - offset);
-                 if(drawX > this.x + s) drawX -= s; // basit döngü
-                 ctx.fillRect(drawX % s + this.x, this.y, 4, s);
-            } else {
-                // Dikey bant animasyonu
-                 let drawY = this.y + (this.meta.dy > 0 ? offset : s - offset);
-                 ctx.fillRect(this.x, drawY % s + this.y, s, 4);
+            // Subliminal titreme
+            if (Math.random() < 0.02) {
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(0, 0, size, size);
             }
-        } 
-        else if (this.type === 'dropper') {
-            ctx.fillStyle = '#34495e'; // Taban
-            ctx.fillRect(this.x + 2, this.y + 2, s - 4, s - 4);
-            
-            ctx.fillStyle = this.meta.color; // Renk
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = this.meta.color;
-            ctx.fillRect(this.x + 10, this.y + 10, s - 20, s - 20);
-            ctx.shadowBlur = 0;
 
-            // Çıkış yönü işareti
-            ctx.fillStyle = '#000';
-            let ox = this.meta.outDx * 20;
-            let oy = this.meta.outDy * 20;
-            ctx.fillRect(this.x + s/2 + ox - 5, this.y + s/2 + oy - 5, 10, 10);
-        }
-        else if (this.type === 'processor') {
-            ctx.fillStyle = '#000';
-            ctx.fillRect(this.x, this.y, s, s);
-            
-            // Yeşil enerji alanı
-            ctx.fillStyle = `rgba(0, 255, 157, ${0.3 + Math.sin(Date.now()/300)*0.2})`;
-            ctx.beginPath();
-            ctx.arc(this.x + s/2, this.y + s/2, s/2 - 5, 0, Math.PI * 2);
-            ctx.fill();
-            
-            ctx.strokeStyle = '#00ff9d';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-        }
-    }
-}
+            // Dönüş açılarını güncelle
+            angle += speed;
+            if (chaosMode) angle += 0.1;
 
-// --- ANA OYUN MOTORU (SINGLETON) ---
+            // 4D Projeksiyon Hesaplamaları
+            let projectedPoints = [];
 
-const Game = {
-    canvas: null,
-    ctx: null,
-    width: 0,
-    height: 0,
-    
-    state: 'MENU', // MENU, PLAYING
-    data: {
-        money: 0,
-        rebirths: 0,
-        grid: {}, // "x,y": TileObj
-        itemsBought: [] // ID listesi
-    },
-    
-    particles: [],
-    floatingTexts: [],
-    
-    camera: { x: 0, y: 0 }, // İleride kamera kaydırma eklemek için
-
-    init() {
-        this.canvas = $('gameCanvas');
-        this.ctx = this.canvas.getContext('2d');
-        this.resize();
-        window.addEventListener('resize', () => this.resize());
-        
-        // Loop Başlat
-        requestAnimationFrame(() => this.loop());
-        
-        // UI Oluştur
-        this.createShopUI();
-    },
-
-    resize() {
-        this.width = window.innerWidth;
-        this.height = window.innerHeight;
-        this.canvas.width = this.width;
-        this.canvas.height = this.height;
-    },
-
-    startNew() {
-        this.resetData();
-        this.setupLevel();
-        this.startGameLoop();
-    },
-
-    loadGame() {
-        const save = localStorage.getItem('neonTycoonSave');
-        if (save) {
-            try {
-                // Basit bir decode (Base64)
-                const parsed = JSON.parse(atob(save));
-                this.data = parsed;
-                // Grid'i yeniden inşa et (Tile class'larını geri getir)
-                // Bu örnekte basitleştirmek için sadece startNew yapıyoruz, 
-                // gerçekte burada grid objelerini new Tile() ile tekrar oluşturmak gerekir.
-                // Şimdilik sadece para yüklüyoruz ve leveli baştan kuruyoruz.
-                this.data.grid = {}; 
-                this.setupLevel();
+            for (let i = 0; i < points.length; i++) {
+                let p = points[i];
                 
-                // Önceden alınanları yerleştir (Simülasyon)
-                this.data.itemsBought.forEach(id => {
-                    const item = ITEMS.droppers.find(i => i.id === id);
-                    if(item) {
-                         // Boş slot bul ve koy (Basit mantık)
-                         this.autoPlaceDropper(item, true);
-                    }
-                });
-                
-                this.startGameLoop();
-                this.notify("Kayıt Yüklendi!", "success");
-            } catch(e) {
-                console.error(e);
-                this.notify("Kayıt dosyası bozuk!", "error");
-                this.startNew();
-            }
-        } else {
-            this.notify("Kayıt bulunamadı, yeni oyun.", "warning");
-            this.startNew();
-        }
-    },
+                // Kopyasını al
+                let x = p.x, y = p.y, z = p.z, w = p.w;
 
-    resetData() {
-        this.data = {
-            money: CONFIG.startMoney,
-            rebirths: 0,
-            grid: {},
-            itemsBought: []
-        };
-        this.particles = [];
-    },
+                // 4. Boyutta Dönüş (ZW ve XW düzlemleri - en kafa karıştırıcı olanlar)
+                // ZW Rotasyonu
+                let rw = w * Math.cos(angle) - z * Math.sin(angle);
+                let rz = w * Math.sin(angle) + z * Math.cos(angle);
+                w = rw; z = rz;
 
-    setupLevel() {
-        // Otomatik bir fabrika düzeni kuruyoruz (Statik Grid)
-        // Ortada bir konveyör hattı
-        
-        // 1. Processor (Toplayıcı)
-        this.addTile(2, 4, 'processor');
-
-        // 2. Bantlar (U şeklinde basit bir hat)
-        // Sola doğru giden bant (Processor'a girer)
-        for(let x=3; x<=12; x++) this.addTile(x, 4, 'belt', {dx: -1, dy: 0});
-        
-        // Yukarıdan aşağı inen bant
-        for(let y=1; y<=3; y++) this.addTile(12, y, 'belt', {dx: 0, dy: 1});
-
-        // Sağa giden üst bant
-        for(let x=4; x<=11; x++) this.addTile(x, 1, 'belt', {dx: 1, dy: 0});
-
-        // Üreticiler için boş alanlar tanımlı (Grid sistemi esnek)
-    },
-
-    addTile(gx, gy, type, meta={}) {
-        // Grid'i ortalamak için offset
-        const offsetX = (this.width - (15 * CONFIG.gridSize)) / 2;
-        const offsetY = (this.height - (8 * CONFIG.gridSize)) / 2;
-        
-        // Gerçek dünya koordinatı hesaplama (ama Tile class kendi içinde hallediyor, biz grid veriyoruz)
-        // Not: Tile class'ı render ederken bu offset'i kullanmalı veya camera kullanmalı.
-        // Basitlik için canvas center logic'i draw içinde yapalım.
-        
-        this.data.grid[`${gx},${gy}`] = new Tile(gx, gy, type, meta);
-    },
-
-    startGameLoop() {
-        $('start-screen').style.opacity = 0;
-        setTimeout(() => {
-            $('start-screen').style.display = 'none';
-            $('hud').style.opacity = 1;
-            $('build-menu').style.opacity = 1;
-            $('build-menu').style.transform = "translateX(-50%) translateY(0)";
-        }, 500);
-        
-        this.state = 'PLAYING';
-        
-        // Auto Save
-        setInterval(() => this.saveGame(), 10000);
-    },
-
-    saveGame() {
-        if(this.state !== 'PLAYING') return;
-        // Circular reference'ları önlemek için sadece data'yı kaydet
-        // Grid'i serileştirmek karmaşıktır, burada basitleştiriyoruz:
-        // Sadece para ve alınan item ID'leri kaydediyoruz.
-        const saveString = btoa(JSON.stringify({
-            money: this.data.money,
-            rebirths: this.data.rebirths,
-            itemsBought: this.data.itemsBought,
-            // Grid'i kaydetmiyoruz, level setup'ta tekrar kuruluyor
-        }));
-        localStorage.setItem('neonTycoonSave', saveString);
-        this.notify("Oyun Kaydedildi");
-    },
-
-    // --- OYUN DÖNGÜSÜ ---
-    loop() {
-        // Temizle
-        this.ctx.clearRect(0, 0, this.width, this.height);
-
-        if (this.state === 'PLAYING') {
-            this.update();
-            this.draw();
-        }
-
-        requestAnimationFrame(() => this.loop());
-    },
-
-    update() {
-        // 1. Grid Update (Droppers spawn items)
-        Object.values(this.data.grid).forEach(tile => tile.update());
-
-        // 2. Particles Update
-        for (let i = this.particles.length - 1; i >= 0; i--) {
-            let p = this.particles[i];
-            p.update(this.data.grid);
-            if (!p.active) {
-                this.particles.splice(i, 1);
-            }
-        }
-
-        // 3. Floating Texts Update
-        for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
-            let t = this.floatingTexts[i];
-            t.y -= 1;
-            t.life--;
-            if (t.life <= 0) this.floatingTexts.splice(i, 1);
-        }
-
-        // 4. UI Update
-        $('ui-money').innerText = formatMoney(this.data.money);
-        $('ui-rebirth').innerText = this.data.rebirths;
-    },
-
-    draw() {
-        // Ortala
-        const mapW = 15 * CONFIG.gridSize;
-        const mapH = 8 * CONFIG.gridSize;
-        const startX = (this.width - mapW) / 2;
-        const startY = (this.height - mapH) / 2;
-
-        this.ctx.save();
-        this.ctx.translate(startX, startY);
-
-        // Zemin (Platform)
-        this.ctx.fillStyle = '#161625';
-        this.ctx.fillRect(-20, -20, mapW + 40, mapH + 40);
-        this.ctx.strokeStyle = '#00f3ff';
-        this.ctx.lineWidth = 2;
-        this.ctx.strokeRect(-20, -20, mapW + 40, mapH + 40);
-
-        // Grid'leri Çiz
-        Object.values(this.data.grid).forEach(tile => tile.draw(this.ctx));
-
-        // Slot Göstergeleri (Boş yerler)
-        // Basitçe: Bantların yanındaki boş yerlere hayalet kare çiz
-        // (Bu kısım geliştirilebilir)
-
-        // Parçacıkları Çiz
-        this.particles.forEach(p => p.draw(this.ctx));
-
-        this.ctx.restore();
-
-        // Floating Text (Koordinat sistemi global olduğu için restore'dan sonra)
-        this.floatingTexts.forEach(t => {
-            this.ctx.fillStyle = `rgba(0, 255, 157, ${t.life/50})`;
-            this.ctx.font = 'bold 20px Orbitron';
-            this.ctx.fillText(t.text, t.x + startX, t.y + startY); // startX/Y ekledik çünkü text particle pos kullanıyor
-        });
-    },
-
-    // --- AKSİYONLAR ---
-
-    spawnParticle(gx, gy, value, color) {
-        // Grid koordinatını piksele çevir
-        let x = (gx * CONFIG.gridSize) + CONFIG.gridSize/2;
-        let y = (gy * CONFIG.gridSize) + CONFIG.gridSize/2;
-        
-        // Hangi banda gitmeli?
-        let tile = this.data.grid[`${gx},${gy}`];
-        if (tile && tile.type === 'belt') {
-            let p = new Particle(x, y, value, color);
-            // Rebirth çarpanı
-            p.value *= (1 + this.data.rebirths * 0.5);
-            this.particles.push(p);
-        }
-    },
-
-    collectMoney(amount, x, y) {
-        this.data.money += amount;
-        this.floatingTexts.push({
-            x: x, y: y - 20,
-            text: "+" + formatMoney(amount),
-            life: 50
-        });
-    },
-
-    buyItem(itemId) {
-        const item = ITEMS.droppers.find(i => i.id === itemId);
-        if (!item) return;
-
-        if (this.data.money >= item.cost) {
-            if (this.autoPlaceDropper(item)) {
-                this.data.money -= item.cost;
-                this.data.itemsBought.push(itemId);
-                this.notify(`${item.name} satın alındı!`);
-            } else {
-                this.notify("Yer kalmadı!", "error");
-            }
-        } else {
-            this.notify("Yetersiz Bakiye!", "error");
-        }
-    },
-
-    autoPlaceDropper(itemType, isLoading = false) {
-        // Boş bir slot bul (Bantların yanı)
-        // Basit algoritma: Grid'i tara, bant bul, yanına bak.
-        const directions = [[0,-1], [0,1], [-1,0], [1,0]]; // Üst, Alt, Sol, Sağ
-        
-        for (let key in this.data.grid) {
-            let belt = this.data.grid[key];
-            if (belt.type === 'belt') {
-                // Bantın etrafına bak
-                for (let d of directions) {
-                    let targetGx = belt.gx + d[0];
-                    let targetGy = belt.gy + d[1];
-                    let targetKey = `${targetGx},${targetGy}`;
-                    
-                    if (!this.data.grid[targetKey]) {
-                        // Burası boş! Dropper koy.
-                        // Dropper'ın çıkış yönü banda doğru olmalı
-                        // outDx = -d[0], outDy = -d[1]
-                        
-                        this.data.grid[targetKey] = new Tile(targetGx, targetGy, 'dropper', {
-                            color: itemType.color,
-                            value: itemType.value,
-                            rate: itemType.speed,
-                            outDx: -d[0],
-                            outDy: -d[1]
-                        });
-                        return true;
-                    }
+                // XW Rotasyonu (Kaos modunda değişir)
+                if (chaosMode || Math.random() < 0.1) {
+                    let rx = x * Math.cos(angle * 0.5) - w * Math.sin(angle * 0.5);
+                    rw = x * Math.sin(angle * 0.5) + w * Math.cos(angle * 0.5);
+                    x = rx; w = rw;
                 }
+
+                // 4D -> 3D Projeksiyon
+                let distance = 3; // Kamera mesafesi
+                let wInv = 1 / (distance - w);
+                
+                let p3x = x * wInv;
+                let p3y = y * wInv;
+                let p3z = z * wInv;
+
+                // 3D Rotasyonu (Klasik küp dönüşü)
+                let r3x = p3x * Math.cos(angle) - p3z * Math.sin(angle);
+                let r3z = p3x * Math.sin(angle) + p3z * Math.cos(angle);
+                p3x = r3x; p3z = r3z;
+
+                // 3D -> 2D Projeksiyon
+                let zInv = 1 / (distance - p3z);
+                let p2x = p3x * zInv;
+                let p2y = p3y * zInv;
+
+                // Glitch: Koordinatları rastgele boz
+                if (Math.random() < glitchIntensity) {
+                    p2x += (Math.random() - 0.5) * 0.5;
+                    p2y += (Math.random() - 0.5) * 0.5;
+                }
+
+                // Ekrana ölçekle
+                let scale = size / 3;
+                projectedPoints[i] = {
+                    x: p2x * scale + size / 2,
+                    y: p2y * scale + size / 2
+                };
             }
+
+            // Çizgileri Çiz
+            ctx.lineWidth = chaosMode ? 3 : 1.5;
+            colorHue = (colorHue + 1) % 360;
+            
+            // Renk paleti: Genelde yeşil/beyaz, kaos anında kırmızı/mor
+            let strokeColor = chaosMode 
+                ? `hsl(${Math.random() * 360}, 100%, 50%)` 
+                : `hsl(120, 0%, ${Math.random() * 50 + 50}%)`;
+
+            ctx.strokeStyle = strokeColor;
+
+            // Köşeleri bağla
+            connectPoints(0, 1, projectedPoints);
+            connectPoints(1, 3, projectedPoints);
+            connectPoints(3, 2, projectedPoints);
+            connectPoints(2, 0, projectedPoints);
+
+            connectPoints(4, 5, projectedPoints);
+            connectPoints(5, 7, projectedPoints);
+            connectPoints(7, 6, projectedPoints);
+            connectPoints(6, 4, projectedPoints);
+
+            connectPoints(0, 4, projectedPoints);
+            connectPoints(1, 5, projectedPoints);
+            connectPoints(2, 6, projectedPoints);
+            connectPoints(3, 7, projectedPoints);
+
+            // İç küp bağlantıları (Tesseract yapısı)
+            for(let i=0; i<8; i++) {
+                connectPoints(i, i+8, projectedPoints);
+            }
+
+            connectPoints(8, 9, projectedPoints);
+            connectPoints(9, 11, projectedPoints);
+            connectPoints(11, 10, projectedPoints);
+            connectPoints(10, 8, projectedPoints);
+
+            connectPoints(12, 13, projectedPoints);
+            connectPoints(13, 15, projectedPoints);
+            connectPoints(15, 14, projectedPoints);
+            connectPoints(14, 12, projectedPoints);
+
+            connectPoints(8, 12, projectedPoints);
+            connectPoints(9, 13, projectedPoints);
+            connectPoints(10, 14, projectedPoints);
+            connectPoints(11, 15, projectedPoints);
+
+            // Glitch yoğunluğunu kontrol et
+            if (Math.random() < 0.05) glitchIntensity = 0.1;
+            else glitchIntensity = 0;
+
+            requestAnimationFrame(draw);
         }
-        return false;
-    },
 
-    notify(msg, type='success') {
-        const div = document.createElement('div');
-        div.className = 'toast';
-        div.style.borderRightColor = type === 'error' ? '#ff0055' : '#00ff9d';
-        div.innerText = msg;
-        $('notifs').appendChild(div);
-        setTimeout(() => div.remove(), 3000);
-    }
-};
+        function connectPoints(i, j, points) {
+            // Bazen çizgileri çizme (Bozukluk hissi için)
+            if (Math.random() > 0.98) return;
 
-// --- UI OLUŞTURUCU ---
-Game.createShopUI = function() {
-    const container = $('build-menu');
-    ITEMS.droppers.forEach(item => {
-        let div = document.createElement('div');
-        div.className = 'shop-item';
-        div.innerHTML = `
-            <div class="shop-icon" style="color:${item.color}">■</div>
-            <div class="shop-name">${item.name}</div>
-            <div class="shop-cost">$${item.cost}</div>
-        `;
-        div.onclick = () => Game.buyItem(item.id);
-        container.appendChild(div);
-    });
-};
+            ctx.beginPath();
+            ctx.moveTo(points[i].x, points[i].y);
+            ctx.lineTo(points[j].x, points[j].y);
+            ctx.stroke();
+        }
 
-// Başlat
-window.onload = () => Game.init();
+        // Loop'u başlat
+        draw();
 
-</script>
+        // Pencere yeniden boyutlandırma
+        window.addEventListener('resize', () => {
+             // CSS hallediyor ama canvas içeriği resetlenmesin diye burası boş kalabilir
+             // veya dinamik scale eklenebilir. Şimdilik CSS container yeterli.
+        });
+
+    </script>
 </body>
 </html>
